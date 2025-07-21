@@ -1,0 +1,22 @@
+{
+  "name": "validator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/meobach2906/validator.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/meobach2906/validator/issues"
+  },
+  "homepage": "https://github.com/meobach2906/validator#readme",
+  "dependencies": {
+    "lodash": "^4.17.21"
+  }
+}
