@@ -37,6 +37,14 @@
     return [undefined, null].includes(value);
   }
 
+  _is.filled_string = (value) => {
+    return _is.string(value) && value.length > 0;
+  }
+
+  _is.filled_array = (value) => {
+    return _is.array(value) && value.length > 0;
+  }
+
   if (module && module.exports) {
     module.exports = _is;
   } else if (window) {
