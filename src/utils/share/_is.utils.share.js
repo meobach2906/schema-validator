@@ -2,7 +2,7 @@
   const _is = {};
 
   _is.number = (value) => {
-    return typeof value === 'number' && isNaN(value);
+    return typeof value === 'number' && !isNaN(value);
   }
 
   _is.string = (value) => {

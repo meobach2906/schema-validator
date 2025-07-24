@@ -4,11 +4,11 @@
   const di = {};
 
   const init = () => {
-    const { _is, _ERR } = di;
+    const { _, _is, _ERR } = di;
 
     _private.type_handler = {
       'number': {
-        validate: ({ field, value, schema }) => {
+        validate: ({ info, value, schema }) => {
           const result = {
             original_value: value,
             value: value,
@@ -19,7 +19,7 @@
             result.value = Number(value);
           }
           if (!_is.number(result.value)) {
-            result.errors.push({ field, invalid: 'type', expect: 'number' });
+            result.errors.push({ field: info.field, invalid: 'type', expect: 'number' });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -28,7 +28,7 @@
         }
       },
       'string': {
-        validate: ({ field, value, schema }) => {
+        validate: ({ info, value, schema }) => {
           const result = {
             original_value: value,
             value: value,
@@ -39,7 +39,7 @@
             result.value = _.toString(value);
           }
           if (!_is.string(result.value)) {
-            result.errors.push({ field, invalid: 'type', expect: 'string' });
+            result.errors.push({ field: info.field, invalid: 'type', expect: 'string' });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -48,7 +48,7 @@
         }
       },
       'date': {
-        validate: ({ field, value, schema }) => {
+        validate: ({ info, value, schema }) => {
           const result = {
             original_value: value,
             value: value,
@@ -56,10 +56,10 @@
             is_valid: true,
           };
           if (!schema.strict) {
-            result.value = Date(value);
+            result.value = new Date(value);
           }
           if (!_is.date(result.value)) {
-            result.errors.push({ field, invalid: 'type', expect: 'date' });
+            result.errors.push({ field: info.field, invalid: 'type', expect: 'date' });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -68,7 +68,7 @@
         }
       },
       'boolean': {
-        validate: ({ field, value, schema }) => {
+        validate: ({ info, value, schema }) => {
           const result = {
             original_value: value,
             value: value,
@@ -79,7 +79,7 @@
             result.value = value === true || value === 'true' ? true : (value === false || value === 'false' ? false : value);
           }
           if (!_is.boolean(result.value)) {
-            result.errors.push({ field, invalid: 'type', expect: 'boolean' });
+            result.errors.push({ field: info.field, invalid: 'type', expect: 'boolean' });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -88,21 +88,39 @@
         }
       },
       'object': {
-        validate: ({ field, value: object, schema }) => {
+        validate: ({ info, value: object, schema, options }) => {
           const result = {
             value: object,
             errors: [],
             is_valid: true,
           };
           if (!_is.object(object)) {
-            result.errors.push({ field, invalid: 'type', expect: 'object' });
-          } else {
+            result.errors.push({ field: info.field, invalid: 'type', expect: 'object' });
+          }
+          if (!_is.filled_array(result.errors)) {
+            const property_schema = _private.get_object_schema_properties(schema);
+
             if (schema.strict) {
               for (const key in object) {
-                if (!schema[key]) {
-                  result.errors.push({ field :`${field ? `${field}.${key}` : key}`, invalid: 'not_specific' });
+                if (!property_schema[key]) {
+                  result.errors.push({ field: `${info.field ? `${info.field}.${key}` : key}`, invalid: 'not_specific' });
                 }
               }
+            }
+
+            for (const key in property_schema) {
+              const property_info = {
+                field: `${info.field ? `${info.field}.${key}` : key}`,
+                key: key,
+                root: result.value,
+                input: info.input,
+                errors: result.errors,
+              };
+              const validate_result = _private.validate({ info: property_info, input: result.value[key], schema: property_schema[key], options });
+              result.value[key] = validate_result.value;
+            }
+            if (options.remove_additional_field) {
+              result.value = _.pick(result.value, Object.keys(property_schema));
             }
           }
           if (_is.filled_array(result.errors)) {
@@ -112,14 +130,30 @@
         }
       },
       'array': {
-        validate: ({ field,  value: array, schema }) => {
+        validate: ({ info, value: array, schema, options }) => {
           const result = {
             value: array,
             errors: [],
             is_valid: true,
           };
           if (!_is.array(array)) {
-            result.errors.push({ field, invalid: 'type', expect: 'array' });
+            result.errors.push({ field: info.field, invalid: 'type', expect: 'array' });
+          }
+          if (!_is.filled_array(result.errors)) {
+            const element_schema = _private.get_array_schema_element(schema);
+            for (const index in result.value) {
+
+              const element_info = {
+                field: `${info.field ? `${info.field}.${index}` : index}`,
+                index: index,
+                root: result.value,
+                input: info.input,
+                errors: result.errors,
+              };
+
+              const validate_result = _private.validate({ info: element_info, input: result.value[index], schema: element_schema, options });
+              result.value[index] = validate_result.value;
+            }
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -132,13 +166,13 @@
     _private.check_handler = {
       'min': {
         allow_types: ['number', 'date', 'integer'],
-        check: ({ field, value, schema }) => {
+        check: ({ info, value, schema }) => {
           const result = {
             is_valid: true,
             errors: [],
           };
           if (!(Number(value) >= Number(schema.check.min))) {
-            result.errors.push({ field, invalid: 'min', min_value: schema.check.min });
+            result.errors.push({ field: info.field, invalid: 'min', min_value: schema.check.min });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -146,15 +180,15 @@
           return result;
         }
       },
-      'min': {
+      'max': {
         allow_types: ['number', 'date', 'integer'],
-        check: ({ field, value, schema }) => {
+        check: ({ info, value, schema }) => {
           const result = {
             is_valid: true,
             errors: [],
           };
           if (!(Number(value) <= Number(schema.check.max))) {
-            result.errors.push({ field, invalid: 'max', min_value: schema.check.max });
+            result.errors.push({ field: info.field, invalid: 'max', min_value: schema.check.max });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -164,13 +198,13 @@
       },
       'min_length': {
         allow_types: ['string', 'array'],
-        check: ({ field, value, schema }) => {
+        check: ({ info, value, schema }) => {
           const result = {
             is_valid: true,
             errors: [],
           };
           if (!(value.length >= Number(schema.check.min_length))) {
-            result.errors.push({ field, invalid: 'min_length', min_value: schema.check.min_length });
+            result.errors.push({ field: info.field, invalid: 'min_length', min_value: schema.check.min_length });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -180,13 +214,13 @@
       },
       'max_length': {
         allow_types: ['string', 'array'],
-        check: ({ field, value, schema }) => {
+        check: ({ info, value, schema }) => {
           const result = {
             is_valid: true,
             errors: [],
           };
           if (!(value.length <= Number(schema.check.max_length))) {
-            result.errors.push({ field, invalid: 'max_length', min_value: schema.check.max_length });
+            result.errors.push({ field: info.field, invalid: 'max_length', min_value: schema.check.max_length });
           }
           if (_is.filled_array(result.errors)) {
             result.is_valid = false;
@@ -194,7 +228,93 @@
           return result;
         }
       },
+      'set': {
+        allow_types: ['array'],
+        check: ({ info, value, schema }) => {
+          const result = {
+            is_valid: true,
+            errors: [],
+          };
+
+          if (schema.check.set) {
+            const { list_duplicate_index } = _private.check_duplicate({ list: value });
+            
+            result.errors.push(...list_duplicate_index.map(index => ({ field: `${info.field ? `${info.field}.${index}` : index}`, invalid: 'set' })));
+          }
+
+          if (_is.filled_array(result.errors)) {
+            result.is_valid = false;
+          }
+          return result;
+        }
+      },
+      'unique': {
+        allow_types: ['array'],
+        check: ({ info, value, schema }) => {
+          const result = {
+            is_valid: true,
+            errors: [],
+          };
+
+          const list_unique = _is.array(schema.check.unique) ? schema.check.unique : [schema.check.unique];
+
+          for (const unique of list_unique) {
+            const keys = unique.split(',');
+
+            const { list_duplicate_index } = _private.check_duplicate({ list: value, keys });
+            
+            result.errors.push(...list_duplicate_index.map(index => ({ field: `${info.field ? `${info.field}.${index}` : index}.${schema.check.unique}`, invalid: 'unique',  })));
+          }
+
+          if (_is.filled_array(result.errors)) {
+            result.is_valid = false;
+          }
+          return result;
+        }
+      },
     };
+
+    _private.check_duplicate = ({ list, keys }) => {
+      const result = {
+        list_duplicate_items: [],
+        list_duplicate_index: [],
+        group: {},
+      };
+
+      for (const index in list) {
+        const item = list[index];
+
+        let value = null;
+
+        if (_is.filled_array(keys)) {
+          const values = [];
+
+          for (const key of keys) {
+            values.push(item[key]);
+          }
+          value = values.join('-')
+        } else {
+          value = item;
+        }
+        
+        result.group[value] = result.group[value] || [];
+
+        result.group[value].push(index);
+
+      }
+
+      for (const key in result.group) {
+        if (result.group[key].length > 1) {
+          result.list_duplicate_index.push(...result.group[key]);
+
+          for (const index of result.group[key]) {
+            result.list_duplicate_items.push(list[index]);
+          }
+        }
+      }
+
+      return result;
+    }
 
     _private.to_handler = {
       'trim': {
@@ -345,7 +465,7 @@
         }
 
         if (!_is.empty(schema.to)) {
-          if (!_is.filled_string(schema.to) && !_is.filled_array(schema.to)) {
+          if (!_is.filled_string(schema.to) && !_is.filled_array(schema.to) && !_is.function(schema.to)) {
             throw new Error(`Invalid schema property: check must be filled string or array`);
           }
 
@@ -353,17 +473,19 @@
             throw new Error(`Invalid schema property: can not to field multiple type`);
           }
 
-          const to = _is.filled_string(schema.to) ? schema.to.split(',') : schema.to;
+          if (!_is.function(schema.to)) {
+            const to = _is.filled_string(schema.to) ? schema.to.split(',') : schema.to;
 
-          for (const key of to) {
-            const to_handler = _private.to_handler[key];
-
-            if (!to_handler) {
-              throw new Error(`Invalid schema property: to.${key} not define`);
-            }
-
-            if (!to_handler.allow_types.includes('*') || !to_handler.allow_types.includes(schema.type)) {
-              throw new Error(`Invalid schema property: to.${key} only allow ${to_handler.allow_types.join(', ')}`);
+            for (const key of to) {
+              const to_handler = _private.to_handler[key];
+  
+              if (!to_handler) {
+                throw new Error(`Invalid schema property: to.${key} not define`);
+              }
+  
+              if (!to_handler.allow_types.includes('*') || !to_handler.allow_types.includes(schema.type)) {
+                throw new Error(`Invalid schema property: to.${key} only allow ${to_handler.allow_types.join(', ')}`);
+              }
             }
           }
         }
@@ -408,11 +530,11 @@
       throw new Error('Invalid array schema element');
     }
   
-    _private.validate = ({ field = '', input, schema, errors, root, options }) => {
+    _private.validate = ({ input, schema, info, options }) => {
       const result = {
         value: input,
         is_valid: true,
-        errors: errors,
+        errors: info.errors || [],
       };
 
       const type =  _private.get_schema_type(schema);
@@ -422,15 +544,15 @@
       }
   
       if (schema.require && input === undefined) {
-        result.errors.push({ field, invalid: 'require' });
+        result.errors.push({ field: info.field, invalid: 'require' });
         result.is_valid = false;
         return result;
       }
   
       if (result.value === undefined) {
         if (schema.default != undefined) {
-          if (typeof schema.default === 'function') {
-            result.value = schema.default({ input: root });
+          if (_is.function(schema.default)) {
+            result.value = schema.default({ info });
           } else {
             result.value = schema.default;
           }
@@ -440,15 +562,15 @@
       }
 
       if (result.value === null && !schema.nullable) {
-        result.errors.push({ field, invalid: 'not nullable' });
+        result.errors.push({ field: info.field, invalid: 'not nullable' });
         result.is_valid = false;
-        return result.value;
+        return result; 
       }
 
       if (schema.enum && !schema.enum.includes(result.value)) {
-        result.errors.push({ field, invalid: 'enum', enum: schema.enum });
+        result.errors.push({ field: info.field, invalid: 'enum', enum: schema.enum });
         result.is_valid = false;
-        return result.value;
+        return result; 
       }
   
       if (!_is.empty(result.value)) {
@@ -459,54 +581,34 @@
 
         let matched_type  = null;
 
+        const type_handler_errors = [];
         for (const type of multiple_types) {
-          const type_handler = _private.type_handler[schema.type];
+          const type_handler = _private.type_handler[type];
   
-          const type_handler_result = type_handler.validate({ field, value: result.value, schema });
-
-          if (!type_handler_result.is_valid) {
-            errors.push(...type_handler_result.errors);
-          }
+          const type_handler_result = type_handler.validate({ info, value: result.value, schema, options });
 
           if (type_handler_result.is_valid) {
             matched_type  = type;
             result.value = type_handler_result.value;
             break;
+          } else {
+            type_handler_errors.push(...type_handler_result.errors);
           }
   
         }
 
         if (!matched_type) {
-          errors.push({ invalid: 'type', expect: multiple_types });
-        }
-
-        if (matched_type  === 'object') {
-          const property_schema = _private.get_object_schema_properties(schema);
-          for (const key in property_schema) {
-            const validate_result = _private.validate({ field: `${field}.${key}`, value: result.value[key], schema: property_schema, errors: errors, root, options });
-            result.value[key] = validate_result.value;
-          }
-          if (options.remove_additional_field) {
-            result.value = _.pick(result.value, Object.keys(property_schema));
-          }
-        }
-
-        if (matched_type  === 'array') {
-          const element_schema = _private.get_array_schema_element(schema);
-          for (const index in result.value) {
-            const validate_result = _private.validate({ field: `${field}.${index}`, value: result.value[index], schema: element_schema, errors: errors, root, options });
-            result.value[index] = validate_result.value;
-          }
+          errors.push(...type_handler_errors);
         }
 
         if (!_is.filled_array(errors) && schema.check) {
-          if (typeof schema.check === 'function') {
-            const check_result = schema.check({ value: result.value, schema, root });
+          if (_is.function(schema.check)) {
+            const check_result = schema.check({ info, value: result.value, schema }) || { errors: [] };
             errors.push(...check_result.errors);
           } else {
             for (const check in schema.check) {
               const check_handler = _private.check_handler[check];
-              const check_handler_result = check_handler.check({ value: result.value, schema })
+              const check_handler_result = check_handler.check({ info, value: result.value, schema }) || { errors: [] };
               if(!check_handler_result.is_valid) {
                 errors.push(...check_handler_result.errors);
               }
@@ -515,16 +617,21 @@
         }
 
         if (!_is.filled_array(errors) && schema.to) {
-          const to = _is.filled_string(schema.to) ? schema.to.split(',') : schema.to;
+          if (_is.function(schema.to)) {
+            result.value = schema.to({ value: result.value });
+          } else {
+            const to = _is.filled_string(schema.to) ? schema.to.split(',') : schema.to;
 
-          for (const key of to) {
-            const to_handler = _private.to_handler[key];
-            result.value = to_handler.to({ value: result.value });
+            for (const key of to) {
+              const to_handler = _private.to_handler[key];
+              result.value = to_handler.to({ value: result.value });
+            }
           }
         }
 
         if (_is.filled_array(errors)) {
           result.is_valid = false;
+          result.errors.push(...errors);
         }
 
       }
@@ -542,8 +649,15 @@
         errors: []
       };
 
-      const validate_result = _private.validate({ input, schema, errors: result.errors, root, options });
+      const info = {
+        field: '',
+        input: input,
+        root: input,
+      };
 
+      const validate_result = _private.validate({ input, schema, info, options });
+
+      result.errors = validate_result.errors;
       result.output = validate_result.value;
 
       if (options.is_throw_error) {
@@ -558,6 +672,7 @@
     return _public;
   }
   if (module && module.exports) {
+    di._ = require('lodash');
     di._is = require('./_is.utils.share');
     di._ERR = require('./_ERR.utils.share');
     module.exports = init();
