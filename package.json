@@ -1,6 +1,6 @@
 {
   "name": "meobach-validator-lib",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -24,7 +24,9 @@
     "mocha": "^11.7.1"
   },
   "mocha": {
-    "require": ["chai/register-expect.js,chai/register-expect.js,chai/register-assert.js"],
+    "require": [
+      "chai/register-expect.js,chai/register-expect.js,chai/register-assert.js"
+    ],
     "spec": "./test/**/*.spec.js",
     "extension": [
       "js"
