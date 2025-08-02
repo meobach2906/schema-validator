@@ -14,7 +14,7 @@ describe('validator', () => {
         },
         set: { type: 'array', element: { type: 'string' }, check: { set: true } },
         unique_code: { type: 'array', check: { unique: 'code' }, element: { code: { type: 'string' }, age: { type: 'number' } } },
-        boolean: { type: 'boolean', strict: false },
+        boolean: { type: 'boolean' },
         number_min_5_max_3: { type: 'number', check: { min: 5, max: 3 } },
         custom: {
           type: 'string',
@@ -56,46 +56,46 @@ describe('validator', () => {
         ],
         errors: [
           {
-            field: "0.string",
+            field: "[0].string",
             invalid: "require"
           },
           {
-            field: "0.strict_string",
+            field: "[0].strict_string",
             invalid: "type",
             expect: "string"
           },
           {
-            field: "0.strict_object",
+            field: "[0].strict_object",
             invalid: "type",
             expect: "object"
           },
           {
-            field: "0.set.0",
+            field: "[0].set.[0]",
             invalid: "set"
           },
           {
-            field: "0.set.2",
+            field: "[0].set.[2]",
             invalid: "set"
           },
           {
             invalid: "unique",
-            field: "0.unique_code.0.code"
+            field: "[0].unique_code.[0].code"
           },
           {
             invalid: "unique",
-            field: "0.unique_code.2.code"
+            field: "[0].unique_code.[2].code"
           },
           {
             invalid: "unique",
-            field: "0.unique_code.3.code"
+            field: "[0].unique_code.[3].code"
           },
           {
-            field: "0.number_min_5_max_3",
+            field: "[0].number_min_5_max_3",
             invalid: "min",
             min_value: 5
           },
           {
-            field: "0.number_min_5_max_3",
+            field: "[0].number_min_5_max_3",
             invalid: "max",
             min_value: 3
           }
@@ -106,7 +106,7 @@ describe('validator', () => {
 
   before(() => {
     initTest = (test) => {
-      validator.init_schema({ code: test.code, schema: test.schema });
+      validator.compile({ code: test.code, schema: test.schema });
     };
 
     tests.forEach(initTest)

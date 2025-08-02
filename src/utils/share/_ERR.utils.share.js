@@ -1,3 +1,5 @@
+'use strict';
+
 (() => {
 
   class ERR extends Error {
