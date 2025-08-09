@@ -15,8 +15,8 @@
 
   class ERR_VALIDATION_FAILED extends Error {
     static CODE = 'ERR_VALIDATION_FAILED'
-    constructor({ errors }) {
-      super();
+    constructor({ errors, message = 'ERR_VALIDATION_FAILED' }) {
+      super(message);
       this.code = ERR_VALIDATION_FAILED.CODE;
       this.errors = errors;
       this.reactions = ['FIX_DATA'];

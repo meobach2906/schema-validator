@@ -638,7 +638,14 @@
           throw new Error(`Schema code ${code} not compiled`);
         }
         return compiled_schema[code].validate({ input, options });
-      }
+      },
+      assert_validate: ({ code, input, options }) => {
+        const { output, errors } = _public.validate({ code, input, options });
+        if (_is.filled_array(errors)) {
+          throw new _ERR.ERR_VALIDATION_FAILED({ errors });
+        }
+        return output;
+      },
     };
 
     _public.schema.type.add({ key: 'number', handler: {
