@@ -28,7 +28,8 @@ describe('validator', () => {
             return { errors: [] }
           },
           to: ({ value }) => String(value).toUpperCase(),
-        }
+        },
+        function: { type: 'function' },
       }],
       input: [{
         string: undefined,
@@ -39,6 +40,7 @@ describe('validator', () => {
         unique_code: [{ code: 1, age: 1 }, { code: 2 }, { code: 1, age: 2 }, { code: 1, age: 1 }],
         boolean: 'true',
         number_min_5_max_3: 4,
+        function: 'string',
       }],
       expected: {
         output: [
@@ -51,7 +53,8 @@ describe('validator', () => {
             unique_code: [{ code: "1", age: 1 }, { code: "2", age: undefined }, { code: "1", age: 2 }, { code: "1", age: 1 }],
             boolean: true,
             number_min_5_max_3: 4,
-            custom: "ARRAY>0"
+            custom: "ARRAY>0",
+            function: 'string',
           }
         ],
         errors: [
@@ -98,6 +101,11 @@ describe('validator', () => {
             field: "[0].number_min_5_max_3",
             invalid: "max",
             min_value: 3
+          },
+          {
+            field: "[0].function",
+            invalid: "type",
+            expect: "function"
           }
         ]
       }

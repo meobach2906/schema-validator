@@ -672,6 +672,21 @@
       convert: ({ info, value, schema }) => value,
       check: ({ info, value, schema }) => _is.array(value),
     }});
+
+    _public.schema.type.add({ key: 'integer', handler: {
+      convert: ({ value }) => Number(value),
+      check: ({ value }) => _is.integer(value),
+    }})
+    
+    _public.schema.type.add({ key: 'function', handler: {
+      convert: ({ value }) => value,
+      check: ({ value }) => _is.function(value),
+    }})
+    
+    _public.schema.type.add({ key: 'async_function', handler: {
+      convert: ({ value }) => value,
+      check: ({ value }) => _is.async_function(value),
+    }})
     
     _public.schema.type.add({ key: 'object', raw: ({ info, value: object, schema, strict }) => {
       const result = {

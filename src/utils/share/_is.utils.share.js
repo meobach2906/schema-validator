@@ -23,6 +23,10 @@
     return typeof value === 'function';
   }
 
+  _is.async_function = (value) => {
+    return value && value.constructor && value.constructor.name === 'AsyncFunction';
+  }
+
   _is.array = (value) => {
     return Array.isArray(value);
   }
@@ -45,6 +49,10 @@
 
   _is.filled_array = (value) => {
     return _is.array(value) && value.length > 0;
+  }
+
+  _is.integer = (value) => {
+    return typeof value === 'number' && value % 1 === 0;
   }
 
   if (module && module.exports) {

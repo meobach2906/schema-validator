@@ -1,78 +1,99 @@
-This is the library to validate by schema
+This is the library to validate value by schema
 
-Schema
+1. Schema
   + Schema define structure of validated value
 
-  + To validate by schema, must first compile schema
+    + To validate by schema, must first compile schema
 
-  + Compile:
-    1. Validate schema
-    2. Compile to function to validate.
+    + Compile:
+      1. Validate schema syntax
+      2. Compile to create function that use to validate schema.
 
-    * compile once and reuse
+        * Each schema compiled once and reuse
 
-    ```
-      const validator = require('schema-validator');
+      ```
+        const validator = require('schema-validator');
 
-      validator.compile({
-        code:  <code>, // each schema have different code
-        schema: <schema>
-      })
+        // compile schema
+        validator.compile({
+          code:  <code>, // each schema have different code
+          schema: <schema>
+        })
 
-      validator.validate({
-        code: <code>, // schema's code
-        input: <input>,
-        options: {
-          strict: <boolean>, // if true: strict validate; else: base on schema strict
-          remove_additional_field: <boolean> // default false. if true: remove filled if object that not define in schema
-        }
-      })
-    ```
+        validator.validate({
+          code: <code>, // schema's code
+          input: <input>,
+          options: <options>
+        })
+      ```
 
-    + strict validate:
-      1. convert value to type need check
-      2. check type converted value
-      3. assign converted value to input
+      + <options>:
+        + <options>.strict: default: true
+          + true: strict validate, overwrite schema strict
+
+        + <options>.remove_additional_field: default: false
+          + true: remove object.field that not specific in schema
+
+    + Non-strict validate:
+      1. Convert value to field's schema type
+      2. Validate type by using converted value
+      3. Assign converted value to input
+      => Convert value before validate type
+
+    + Strict validate: not convert value before validate type
 
   + 2 type schema:
 
-    - Implicit schema: object exclude 'type' key word or array
-      + object exclude 'type': object schema.
+    - Implicit schema:
+      + Object exclude 'type': object schema.
 
-      + array: array schema.
-
-    - Explicit schema: object include type key word
+      + Array: array schema.
 
       ```
-        { type: 'object', properties: { // explicit schema for object
+        schema: [
+          {
+            _id: { type: 'string }
+          }
+        ]
+
+        // => schema: array contain object element which have _id string property
+      ```
+
+    - Explicit schema: object include 'type'
+
+      ```
+        schema: { type: 'object', properties: {
           // schema of object
         }}
       ```
 
       + Explicit schema allow properties:
 
-        + type:
-          + field type
+        + 'type':
+          + Field type
 
-          + can accept multiple type, separate by ,ß
+          + Can accept multiple type which separate by ','. ex: type: 'string,number'
 
-          + list default type:
-            + number
-            + string
-            + boolean
-            + date
-            + array
-            + object
+          + List default type:
+            + 'number'
+            + 'string'
+            + 'boolean'
+            + 'date'
+            + 'array'
+            + 'integer'
+            + 'function'
+            + 'async_function'
+            + 'object'
               + if strict validate: if input object contain field not in define in schema, raise error
 
-          + add custom type
+          + Add custom type
             ```
               validator.schema.type.add({ key: 'integer', handler: {
                 convert: ({ info, value, schema }) => value, // convert when strict = false
                 check: ({ info, value, schema }) => Number.isInteger(value), // check
               }});
 
-              // or
+              // OR raw
               
               validator.schema.type.add({ key: 'integer', raw: ({ info, value, schema, strict }) => {
                 const result = {
@@ -89,29 +110,23 @@ Schema
               }});
 
               // schema: field's schema
-              // info: { field }
+              // info: info.field:
               // value: field's value
             ```
 
-        + require: <boolean>
-          + default: false
+        + 'require': <boolean>: default: false
+          + true: if field's value missing or undefined => invalid
 
-          + if true: if field'value missing or undefined, raise error
+        + 'nullable': <boolean>: default: false
+          + true: default null
+          + false: if field's value == null => invalid
 
-        + nullable:
-          + default: false
+        + 'enum': <array>
+          + Field's value must in <array>
 
-          + if true: default null
+        + 'default': <default_value>: default: undefine
 
-          + if false: if field's value = null, raise error
-
-        + enum: <array>
-          + if provide: field's value must in <array>
-
-        + default: <default>
-          + default: undefine
-
-          + if provide value: default value for field
+          + If provide value: assign default value for field
           ```
             {
               type: 'boolean',
@@ -119,7 +134,7 @@ Schema
             }
           ```
 
-          + can access function: invoke function and assign result to field
+          + Can specific function: invoke function and assign result to field
           ```
             {
               type: 'number',
@@ -134,13 +149,12 @@ Schema
             }
           ```
 
-        + strict: <boolean>
-          + default: false
-          + if true: strict validate
+        + 'strict': <boolean>: default: false
+          + true: strict validate
 
-        + properties:
-          + must provide if type = 'object'
-          + schema for object
+        + 'properties':
+          + Schema for object
+          + Must provide if 'type' = 'object'
 
           ```
             {
@@ -151,9 +165,9 @@ Schema
             }
           ```
 
-        + element:
-          + must provide if type = 'array'
-          + schema for element in array
+        + 'element':
+          + Schema for element in array
+          + Must provide if type = 'array'
 
           ```
             {
@@ -164,16 +178,18 @@ Schema
             }
           ```
 
-        + check:
-          + use to extra validate field beside type validate
-          + can be object, which key is check:
-            + list default check:
-              + min
-              + max
-              + min_length
-              + max_length
-              + set
-              + unique
+        + 'check':
+          + Use to extra validate field beside type validate
+          + Can be object, which key is check:
+            + List default check:
+              + 'min': <number>
+              + 'max': <number>
+              + 'min_length': <number>
+              + 'max_length': <number>
+              + 'set': <boolean>
+                + true: each element in array must unique
+              + 'unique': <field>
+                + <field>: element's field in array must unique
 
               ```
                 // example
@@ -198,7 +214,7 @@ Schema
                 
               ```
 
-            + add custom check:
+            + Add custom check:
             ```
               validator.schema.check.add({ key: 'max_length', handler: {
                 check: ({ info, value, schema }) => true,
@@ -212,7 +228,7 @@ Schema
               }});
             ```
 
-          + can be function
+          + Can be function
           ```
             {
               type: 'number',
@@ -228,18 +244,18 @@ Schema
             }
           ```
 
-        + to:
-          + use to convert or format
+        + 'to':
+          + Use to convert or format
 
-          + can be list separate by ','. Will be execute in order
-            + list default:
-              + trim
-              + lowercase
-              + uppercase
-              + round
-              + floor
-              + ceil
-              + iso_datetime
+          + Can be list separate by ','. Will be execute in order
+            + List default:
+              + 'trim'
+              + 'lowercase'
+              + 'uppercase'
+              + 'round'
+              + 'floor'
+              + 'ceil'
+              + 'iso_datetime'
 
               ```
                 {
@@ -248,17 +264,17 @@ Schema
                 }
               ```
 
-              + add custom
+              + Add custom
               ```
                validator.schema.to.add({ key: 'iso_datetime', handler: {
-                  to: ({ value }) => new Date(value).toISOString(),
+                  to: ({ value }) => new Date(value).toISOString(), // assign result to field
                 }});
               ```
 
-          + can be function
+          + Can be function
             ```
               {
                 type: 'number',
-                to: ({ value }) => String(value).toUpperCase()
+                to: ({ value }) => String(value).toUpperCase(), // assign result to field
               }
             ```
